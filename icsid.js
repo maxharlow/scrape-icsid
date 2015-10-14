@@ -1,6 +1,7 @@
 var highland = require('highland')
 var request = require('request')
 var cheerio = require('cheerio')
+var ent = require('ent')
 var fs = require('fs')
 var csvWriter = require('csv-write-stream')
 
@@ -23,26 +24,34 @@ function details(response) {
     var document = cheerio.load(response.body)
     return {
         id: response.request.href.split('CaseNo=')[1],
-        title: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_lblCasetitle').text().trim(),
-        subject: document('.casedetailtbl td:not(.txtbold)').eq(0).text().trim(),
-        economicSector: document('.casedetailtbl td:not(.txtbold)').eq(1).text().trim(),
-        instrumentsInvoked: (document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_lblBIT').text().trim() + ' ' + document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_lblInstrumentInvk').text().trim()).trim(),
-        applicableRules: document('.casedetailtbl td:not(.txtbold)').eq(3).text().trim(),
-        claimants: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_Label5').text().trim(),
-        respondents: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_Label1').text().trim(),
-        registeredDate: new Date(document('.casedetailtbl td:not(.txtbold)').eq(8).text().trim()).toISOString(),
-        constitutionOfTribunalDate: new Date(document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lbldatconst').text().trim()).toISOString(),
-        tribunalPresident: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblPresident').text().trim(),
-        tribunalArbitrators: document('.casedetailtbl td:not(.txtbold)').eq(12).text().trim(), // todo add commas
-        initialTribunalPresident: document('.casedetailtbl td:not(.txtbold)').eq(13).text().trim(),
-        initialTribunalArbitrators: document('.casedetailtbl td:not(.txtbold)').eq(14).text().trim(), // todo add commas
-        initialTribunalReconstituted: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lbldatreconst').text().trim(),
-        representitivesClaimants: document('.casedetailtbl td:not(.txtbold)').eq(16).text().trim(), // todo replace prefix, add commas
-        representitivesRespondents: document('.casedetailtbl td:not(.txtbold)').eq(17).text().trim(), // todo replace prefix, add commas
-        proceedingLanguage: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblLang').text().trim(),
-        proceedingStatus: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblSts').text().trim(),
-        proceedingOutcome: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblOut').text().trim()
+        title: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_lblCasetitle').text(),
+        subject: document('.casedetailtbl td:not(.txtbold)').eq(0).text(),
+        economicSector: document('.casedetailtbl td:not(.txtbold)').eq(1).text(),
+        instrumentsInvoked: (document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_lblBIT').text() + ' ' + document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_lblInstrumentInvk').text()),
+        applicableRules: document('.casedetailtbl td:not(.txtbold)').eq(3).text(),
+        seatOfArbitration: document('.casedetailtbl td:not(.txtbold)').eq(4).text(),
+        claimants: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_Label5').text(),
+        respondents: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_Label1').text(),
+        registeredDate: document('.casedetailtbl td:not(.txtbold)').eq(8).text(),
+        constitutionOfTribunalDate: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lbldatconst').text(),
+        tribunalPresident: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblPresident').text(),
+        tribunalArbitrators: document('.casedetailtbl td:not(.txtbold)').eq(12).html().trim().replace(/<br>$/, '').replace(/<br>/g, '; '),
+        initialTribunalPresident: document('.casedetailtbl td:not(.txtbold)').eq(13).text(),
+        initialTribunalArbitrators: document('.casedetailtbl td:not(.txtbold)').eq(14).html().trim().replace(/<br>$/, '').replace(/<br>/g, '; '),
+        initialTribunalReconstituted: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lbldatreconst').text(),
+        representitivesClaimants: document('.casedetailtbl td:not(.txtbold)').eq(16).find(':not(.txtbold)').html().trim().replace(/<br>$/, '').replace(/<br>/g, '; '),
+        representitivesRespondents: document('.casedetailtbl td:not(.txtbold)').eq(17).find(':not(.txtbold)').html().trim().replace(/<br>$/, '').replace(/<br>/g, '; '),
+        proceedingLanguage: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblLang').text(),
+        proceedingStatus: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblSts').text(),
+        proceedingOutcome: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_rptCasesList_ctl00_rptProceeding_ctl00_lblOut').text()
     }
+}
+
+function decode(details) {
+    for (key in details) {
+        details[key] = ent.decode(details[key]).trim()
+    }
+    return details
 }
 
 highland([directory])
@@ -50,6 +59,7 @@ highland([directory])
     .flatMap(cases)
     .flatMap(http)
     .map(details)
+    .map(decode)
     .errors(function (e) { console.log('Error: ' + e.stack) })
     .through(csvWriter())
     .pipe(fs.createWriteStream('icsid.csv'))
