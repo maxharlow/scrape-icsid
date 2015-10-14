@@ -22,7 +22,7 @@ function cases(response) {
 function details(response) {
     var document = cheerio.load(response.body)
     return {
-        page: response.request.href,
+        id: response.request.href.split('CaseNo=')[1],
         title: document('#ctl00_m_g_39b2e503_4cae_4c82_a505_66099a6ff48d_ctl00_lblCasetitle').text().trim(),
         subject: document('.casedetailtbl td:not(.txtbold)').eq(0).text().trim(),
         economicSector: document('.casedetailtbl td:not(.txtbold)').eq(1).text().trim(),
